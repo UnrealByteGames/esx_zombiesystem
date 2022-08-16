@@ -47,3 +47,29 @@ AddEventHandler("RegisterNewZombie", function(entity)
 	TriggerClientEvent("ZombieSync", -1, entity)
 	table.insert(entitys, entity)
 end)
+
+ESX.RegisterCommand('giveammo', 'admin', function(xPlayer, args, showError)
+    local playerPed = GetPlayerPed(args.playerId)
+
+    currentWeapon = GetCurrentPedWeapon(playerPed, true)
+ 
+    if currentWeapon ~= nil then
+        local currentAmmo = GetAmmoInPedWeapon(playerPed, currentWeapon)
+        local newAmmo = currentAmmo + args.count
+        local maxAmmo = GetMaxAmmo(playerPed, currentWeapon)
+        if newAmmo < maxAmmo then
+            TaskReloadWeapon(playerPed)
+            SetPedAmmo(playerPed, currentWeapon, newAmmo)
+            
+        else
+            showError("Weapon player is holding already has max ammo.")
+        end
+    
+    else
+        showError("Player isn't holding a weapon.")
+    end
+
+end, true, {help = 'Give ammo to weapon player is holding in hands', validate = true, arguments = {
+	{name = 'playerId', help = 'commandgeneric_playerid', type = 'player'},
+	{name = 'count', help = 'command_giveitem_count', type = 'number'}
+}})

@@ -367,30 +367,7 @@ AddEventHandler("ZombieSync", function()
 			until canSpawn
 			entity = CreatePed(4, GetHashKey(EntityModel), posX, posY, posZ, 0.0, true, false)
 
-			walk = walks[math.random(1, #walks)]
-						
-			RequestAnimSet(walk)
-			while not HasAnimSetLoaded(walk) do
-				Citizen.Wait(1)
-			end
-			--TaskGoToEntity(entity, GetPlayerPed(-1), -1, 0.0, 1.0, 1073741824, 0)
-			SetPedMovementClipset(entity, walk, 1.0)
-			TaskWanderStandard(entity, 1.0, 10)
-			SetCanAttackFriendly(entity, true, true)
-			SetPedCanEvasiveDive(entity, false)
-			SetPedRelationshipGroupHash(entity, GetHashKey("zombie"))
-			SetPedCombatAbility(entity, 0)
-			SetPedCombatRange(entity,0)
-			SetPedCombatMovement(entity, 0)
-			SetPedAlertness(entity,0)
-			SetPedIsDrunk(entity, true)
-			SetPedConfigFlag(entity,100,1)
-			ApplyPedDamagePack(entity,"BigHitByVehicle", 0.0, 9.0)
-			ApplyPedDamagePack(entity,"SCR_Dumpster", 0.0, 9.0)
-			ApplyPedDamagePack(entity,"SCR_Torture", 0.0, 9.0)
-			DisablePedPainAudio(entity, true)
-			StopPedSpeaking(entity,true)
-			SetEntityAsMissionEntity(entity, true, true)
+			ZombieSetup(entity)
 
 			if not NetworkGetEntityIsNetworked(entity) then
 				NetworkRegisterEntityAsNetworked(entity)
@@ -429,7 +406,8 @@ AddEventHandler("ZombieSync", function()
 	end
 end)
 
-Citizen.CreateThread(function()
+-- Follow player
+--[[Citizen.CreateThread(function()
 	while true do
 		Citizen.Wait(1000)
 		for i, entity in pairs(entitys) do
@@ -438,24 +416,77 @@ Citizen.CreateThread(function()
 				local distance = GetDistanceBetweenCoords(GetEntityCoords(GetPlayerPed(player)), GetEntityCoords(entity), true)
 				if distance <= 25.0 then
 					--TaskGoStraightToCoord(entity, playerX, playerY, playerZ, 1.0, -1, 0,0)
-					TaskGoToEntity(entity, GetPlayerPed(player), -1, 0.0, 1.0, 1073741824, 0)
+					--TaskGoToEntity(entity, GetPlayerPed(player), -1, 0.0, 1.0, 1073741824, 0)
+					TaskGoStraightToCoord(entity, playerX, playerY, playerZ, 2.0, -1, 0.0, 0.0)
 				end
 			end
 		end
 	end
-end)
+end)]]--
 
+if Config.AttackPlayersOnShooting then
+	Citizen.CreateThread(function()
+			while true do
+					Citizen.Wait(0)	
+					if IsPedShooting(PlayerPedId()) then	
+							for i, v in pairs(entitys) do
+									TaskGoToEntity(v.entity, PlayerPedId(), -1, 0.0, 500.0, 1073741824, 0)
+							end	
+					end
+			end
+	end)
+end
 
+if Config.HumanEatingAndAttackingAnimation then
+	local animationSleepTime = 2000
+
+	Citizen.CreateThread(function()
+			while true do
+					Citizen.Wait(animationSleepTime)
+
+					StartHumanEatingAndAttackingAnimation()
+			end
+	end)
+
+	StartHumanEatingAndAttackingAnimation = function()
+
+			for i, v in pairs(entitys) do
+
+					local distance = GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), GetEntityCoords(v.entity), true)
+
+					-- Playing zombies animation when a player is dead.
+					if distance <= 1.2 and isDead then
+							animsAction(v.entity, {lib = "amb@world_human_gardener_plant@female@idle_a", anim = "idle_a_female"}) 
+					end
+
+					-- Playing zombies & players animation on attack.
+					if distance <= 1.2 and not isDead then
+
+							RequestAnimDict("misscarsteal4@actor")
+							TaskPlayAnim(v.entity,"misscarsteal4@actor","stumble",1.0, 1.0, 500, 9, 1.0, 0, 0, 0)
+
+							RequestAnimDict("misscarsteal4@actor")
+							TaskPlayAnim(PlayerPedId(),"misscarsteal4@actor","stumble",1.0, 1.0, 500, 9, 1.0, 0, 0, 0)
+
+							TaskGoToEntity(v.entity, PlayerPedId(), -1, 0.0, 500.0, 1073741824, 0)
+					end
+					
+			end
+	end
+
+end
+
+-- Take player health based on distance
 Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(1)
-        for i, entity in pairs(entitys) do
-	       	playerX, playerY, playerZ = table.unpack(GetEntityCoords(GetPlayerPed(-1), true))
+	while true do
+		Citizen.Wait(1)
+		for i, entity in pairs(entitys) do
+			playerX, playerY, playerZ = table.unpack(GetEntityCoords(GetPlayerPed(-1), true))
 			pedX, pedY, pedZ = table.unpack(GetEntityCoords(entity, true))
 			if IsPedDeadOrDying(entity, 1) == 1 then
 				--none :v
 			else
-				if(Vdist(playerX, playerY, playerZ, pedX, pedY, pedZ) < 0.6)then
+				if (Vdist(playerX, playerY, playerZ, pedX, pedY, pedZ) < 0.6) then
 					if IsPedRagdoll(entity, 1) ~= 1 then
 						if not IsPedGettingUp(entity) then
 							RequestAnimDict("misscarsteal4@actor")
@@ -466,14 +497,16 @@ Citizen.CreateThread(function()
 							local newHealth = math.min(maxHealth, math.floor(health - maxHealth / 8))
 							SetEntityHealth(playerPed, newHealth)
 							Wait(2000)	
-							TaskGoToEntity(entity, GetPlayerPed(-1), -1, 0.0, 1.0, 1073741824, 0)
+							TaskGoToEntity(v.entity, playerPed, -1, 0.0, 500.0, 1073741824, 0)
+							--TaskGoToEntity(entity, GetPlayerPed(-1), -1, 0.0, 1.0, 1073741824, 0)
 							--TaskGoStraightToCoord(entity, playerX, playerY, playerZ, 1.0, 0, 0,0)
+							--TaskGoStraightToCoord(entity, playerX, playerY, playerZ, 2.0, -1, 0.0, 0.0)
 						end
 					end
 				end
 			end
 		end
-    end
+	end
 end)
 
 if Config.NotHealthRecharge then
@@ -484,7 +517,8 @@ if Config.MuteAmbience then
 	StartAudioScene('CHARACTER_CHANGE_IN_SKY_SCENE')
 end
 
-SetBlackout(Config.Blackout)
+--SetBlackout(Config.Blackout)
+SetArtificialLightsState(Config.Blackout)
 
 if Config.ZombieDropLoot then
 	Citizen.CreateThread(function()
@@ -502,7 +536,7 @@ if Config.ZombieDropLoot then
 						pedX, pedY, pedZ = table.unpack(GetEntityCoords(entity, true))	
 						if not IsPedInAnyVehicle(PlayerPedId(), false) then
 							if(Vdist(playerX, playerY, playerZ, pedX, pedY, pedZ) < 1.5) then
-								ESX.Game.Utils.DrawText3D({x = pedX, y = pedY, z = pedZ + 0.2}, '~c~PRESS ~b~[E]~c~ TO SEARCH', 0.8, 4)
+								ESX.Game.Utils.DrawText3D({x = pedX, y = pedY, z = pedZ + 0.2}, '~c~PRESS ~b~[E]~c~ TO SEARCH', 1, 4)
 								if IsControlJustReleased(1, 51) then
 									if DoesEntityExist(GetPlayerPed(-1)) then
 										RequestAnimDict("random@domestic")
@@ -549,6 +583,7 @@ if Config.SafeZoneRadioBlip then
 		SetBlipHighDetail(blip, true)
 		SetBlipColour(blip, 2)
 		SetBlipAlpha (blip, 128)
+		SetBlipSprite(blip, v.id)
 	end
 end
 
@@ -596,20 +631,127 @@ if Config.Debug then
 	end)
 end
 
-if Config.NoPeds then
-	Citizen.CreateThread(function()
-		while true do
-			Citizen.Wait(1)
-	    	SetVehicleDensityMultiplierThisFrame(0.0)
-			SetPedDensityMultiplierThisFrame(0.0)
-			SetRandomVehicleDensityMultiplierThisFrame(0.0)
-			SetParkedVehicleDensityMultiplierThisFrame(0.0)
-			SetScenarioPedDensityMultiplierThisFrame(0.0, 0.0)
-			local playerPed = GetPlayerPed(-1)
-			local pos = GetEntityCoords(playerPed) 
-			RemoveVehiclesFromGeneratorsInArea(pos['x'] - 500.0, pos['y'] - 500.0, pos['z'] - 500.0, pos['x'] + 500.0, pos['y'] + 500.0, pos['z'] + 500.0);
-			SetGarbageTrucks(0)
-			SetRandomBoats(0)
+--Default setup.
+local density = { -- 0.0 to 1.0
+	peds = Config.PedsDensity,
+	vehicles = Config.VehiclesDensity,
+	parked = Config.ParkedVehiclesDensity
+}
+
+Citizen.CreateThread(function()
+	--while true do
+		--Citizen.Wait(1)
+		--SetVehicleDensityMultiplierThisFrame(density.vehicles)
+		--SetPedDensityMultiplierThisFrame(density.peds)
+		--SetRandomVehicleDensityMultiplierThisFrame(density.vehicles)
+		--SetParkedVehicleDensityMultiplierThisFrame(density.parked)
+		--SetScenarioPedDensityMultiplierThisFrame(density.peds, density.peds)
+		--local playerPed = GetPlayerPed(-1)
+		--local pos = GetEntityCoords(playerPed) 
+		--RemoveVehiclesFromGeneratorsInArea(pos['x'] - 500.0, pos['y'] - 500.0, pos['z'] - 500.0, pos['x'] + 500.0, pos['y'] + 500.0, pos['z'] + 500.0);
+		SetGarbageTrucks(false) -- Stop garbage trucks from randomly spawning
+		SetRandomBoats(false) -- Stop random boats from spawning in the water.
+		SetRandomTrains(false)
+		SetCreateRandomCops(false) -- disable random cops walking/driving around.
+		SetCreateRandomCopsNotOnScenarios(false) -- stop random cops (not in a scenario) from spawning.
+		SetCreateRandomCopsOnScenarios(false) -- stop random cops (in a scenario) from spawning.
+		DisableVehicleDistantlights(true) -- fixes distant ghost cars from appearing
+
+    SetDispatchCopsForPlayer(PlayerId(), false)
+    SetPedPopulationBudget(density.peds)
+    SetNumberOfParkedVehicles(density.parked)
+    SetVehiclePopulationBudget(density.vehicles)
+    DistantCopCarSirens(false)
+	--end
+end)
+
+-- Disable cars spawned.
+Citizen.CreateThread(function()
+	while true do
+		for i, Player in pairs(GetActivePlayers()) do
+
+			SetDistantCarsEnabled(false)
+
+			local PlayerId = GetPlayerFromServerId(Player)
+			local PlayerPed = GetPlayerPed(PlayerId)
+			local VehicleHandler = -1
+			local Success
+			local Handler, VehicleHandler = FindFirstVehicle()
+
+			repeat
+				Wait(1)
+				local VehicleCoords = GetEntityCoords(VehicleHandler)
+
+				if (IsPedInVehicle(PlayerPed, VehicleHandler, true)) or (GetLastPedInVehicleSeat(VehicleHandler, -1) == PlayerPed) then
+					--The player is in the vehicle, do nothing.
+					SetVehRadioStation(VehicleHandler, "OFF")
+					SetVehicleEngineOn(VehicleHandler, true, false, false)
+				else
+					--A npc is in the vehicle, delete it.
+					if (math.random(1, 100) <= Config.PercentageVehiclesUndriveable) and GetVehicleEngineHealth(VehicleHandler) > 999.0 then
+						SetVehicleIsConsideredByPlayer(VehicleHandler, false)
+						SetEntityRenderScorched(VehicleHandler, true)
+						SetVehicleEngineHealth(VehicleHandler, -4000.0)
+					else
+						SetVehicleEngineHealth(VehicleHandler, 999.0)
+					end
+
+					if not (IsVehicleSeatFree(VehicleHandler, -1)) then
+						local PedHandler = GetPedInVehicleSeat(VehicleHandler, -1)
+						DeleteEntity(PedHandler)
+					elseif not (IsVehicleSeatFree(VehicleHandler, 0)) then
+						local PedHandler = GetPedInVehicleSeat(VehicleHandler, 0)
+						--ZombieSetup(PedHandler)
+						DeleteEntity(PedHandler)
+					end
+
+					SetVehicleEngineOn(VehicleHandler, false, true, true)
+					BringVehicleToHalt(VehicleHandler, 0, 1, false)
+				end
+					
+				if (Config.Debug) then
+						DrawMarker(1, VehicleCoords.x, VehicleCoords.y, VehicleCoords.z, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 4.0, 4.0, 2.0, 255, 255, 255, 255, false, true, 2, nil, nil, false)
+				end
+
+				Success, VehicleHandler = FindNextVehicle(Handler)
+			until not (Success)
+
+			EndFindPed(Handler)
 		end
-	end)
+	end
+end)
+
+function ZombieSetup(entity)
+	walk = walks[math.random(1, #walks)]
+						
+	RequestAnimSet(walk)
+	while not HasAnimSetLoaded(walk) do
+		Citizen.Wait(1)
+	end
+	--TaskGoToEntity(entity, GetPlayerPed(-1), -1, 0.0, 1.0, 1073741824, 0)
+	SetPedMovementClipset(entity, walk, 1.0)
+	TaskWanderStandard(entity, 1.0, 10)
+	SetCanAttackFriendly(entity, true, true)
+	SetPedCanEvasiveDive(entity, false)
+	SetPedRelationshipGroupHash(entity, GetHashKey("zombie"))
+	SetPedCombatAbility(entity, 0)
+	SetPedCombatRange(entity,0)
+	SetPedCombatMovement(entity, 0)
+	SetPedAlertness(entity,0)
+	SetPedIsDrunk(entity, true)
+	SetPedConfigFlag(entity,100,1)
+	--ApplyPedDamagePack(entity,"BigHitByVehicle", 0.0, 9.0)
+	--ApplyPedDamagePack(entity,"SCR_Dumpster", 0.0, 9.0)
+	--ApplyPedDamagePack(entity,"SCR_Torture", 0.0, 9.0)
+
+	ApplyPedDamagePack(entity,"BigHitByVehicle", 1.0, 9.0)
+	ApplyPedDamagePack(entity,"SCR_Dumpster", 1.0, 9.0)
+	ApplyPedDamagePack(entity,"SCR_Torture", 1.0, 9.0)
+	ApplyPedDamagePack(entity,"Splashback_Face_0", 1.0, 9.0)
+	ApplyPedDamagePack(entity,"SCR_Cougar", 1.0, 9.0)
+	ApplyPedDamagePack(entity,"SCR_Shark", 1.0, 9.0)
+
+	DisablePedPainAudio(entity, true)
+	StopPedSpeaking(entity, true)
+	SetEntityAsMissionEntity(entity, true, true)
 end

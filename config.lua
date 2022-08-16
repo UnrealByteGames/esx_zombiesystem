@@ -1,9 +1,19 @@
 Config = {}
 
-Config.SpawnZombie = 10
-Config.MinSpawnDistance = 80
-Config.MaxSpawnDistance = 100
-Config.DespawnDistance = 120
+Config.SpawnZombie = 100
+Config.MinSpawnDistance = 40
+Config.MaxSpawnDistance = 150
+Config.DespawnDistance = 200
+
+Config.AttackPlayersOnShooting = true
+Config.HumanEatingAndAttackingAnimation = true
+
+--Default Peds, vehicles and parked vehicles
+Config.PedsDensity = 0
+Config.VehiclesDensity = 1.0
+Config.ParkedVehiclesDensity = 1.0
+
+Config.PercentageVehiclesUndriveable = 20
 
 Config.ZombieDropLoot = true
 Config.ProbabilityWeaponLoot = 3 -- 3%
@@ -23,8 +33,6 @@ Config.ItemLoot = {
 	'bandage',
 	'medikit'
 }
-
-
 
 Config.ObjectDropLoot = true --false if you experience low performance of server
 Config.ObjectsLoot = {
@@ -49,16 +57,13 @@ Config.ItemLootObject = {
 	'water'
 }
 
-
-
-Config.NoPeds = true
 Config.Blackout = true
 Config.MuteAmbience = true
 Config.NotHealthRecharge = true
 Config.SafeZone = true
 Config.SafeZoneRadioBlip = true
 Config.SafeZoneCoords = {
-	{x = 226.56, y = -1993.84, z = 19.55, radio = 30.0}
+	{x = 226.56, y = -1993.84, z = 19.55, radio = 50.0, id = 814}
 }
 
 Config.Debug = false
